@@ -1,10 +1,8 @@
-from models import nested_unet, simple_autoencoder, error_model
-from anomaly_detection import process_anomalies, reprocess_unlikely_labels, anomaly_detect, remove_anomalous_labels, randomise_labels
+from models import nested_unet, error_model
 from postprocessing import (probability_basin_watershed_2, instance_closing)
 import math
 import numpy as np
 import tensorflow as tf
-from math import ceil
 import os
 from pickle import load
 from skimage.morphology import diamond
@@ -14,6 +12,7 @@ from skimage.measure import regionprops_table
 from skimage.morphology import diamond
 from skimage.segmentation import relabel_sequential, find_boundaries
 import pandas as pd
+from skimage.segmentation import expand_labels
 
 from util import tilegen, stitch_with_overlap
 
@@ -57,6 +56,7 @@ class deepimcyto:
         self.prediction_nuclei = []
         self.prediction_coms = []
         self.error_images = []
+        self.dilation_radius = 5
 
         # features for autoencoder:
         self.features = ['area',
@@ -151,6 +151,10 @@ class deepimcyto:
         """Get boundaries from prediction masks."""
         self.prediction_boundaries = [find_boundaries(x, mode='outer') for x in self.prediction_masks]
         return self.prediction_boundaries
+    
+    def dilate_nuclei(self, radius = 5):
+        self.dilated_masks = [expand_labels(x, radius) for x in self.prediction_masks]
+        return self.dilated_masks
 
 
     def predict_tiles(self, model, image, tile_shape, overlap):
