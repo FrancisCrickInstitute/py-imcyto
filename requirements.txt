@@ -1,0 +1,9 @@
+scikit-image
+tensorflow
+numpy
+pandas
+scipy
+opencv-python
+cupy-cuda11x
+jupyter
+scikit-learn

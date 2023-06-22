@@ -1,20 +1,19 @@
-from models import nested_unet, error_model
-from postprocessing import (probability_basin_watershed_2, instance_closing)
 import math
-import numpy as np
-import tensorflow as tf
 import os
 from pickle import load
-from skimage.morphology import diamond
-from skimage.util import map_array, img_as_uint, img_as_float32
+
+import numpy as np
+import pandas as pd
 import skimage.io as io
+import tensorflow as tf
+from models import error_model, nested_unet
+from postprocessing import instance_closing, probability_basin_watershed_2
 from skimage.measure import regionprops_table
 from skimage.morphology import diamond
-from skimage.segmentation import relabel_sequential, find_boundaries
-import pandas as pd
-from skimage.segmentation import expand_labels
+from skimage.segmentation import expand_labels, find_boundaries, relabel_sequential
+from skimage.util import img_as_float32, img_as_uint, map_array
+from util import stitch_with_overlap, tilegen
 
-from util import tilegen, stitch_with_overlap
 
 class deepimcyto:
     def __init__(self, weightsdir):
@@ -155,6 +154,20 @@ class deepimcyto:
     def dilate_nuclei(self, radius = 5):
         self.dilated_masks = [expand_labels(x, radius) for x in self.prediction_masks]
         return self.dilated_masks
+
+    def make_overlays(self, alpha=0.5):
+        """Make an overlay of the input image and the prediction mask."""
+        self.overlays = [self.overlay(i,m, alpha) for i,m in zip( self.test_images, self.prediction_boundaries)]
+
+    
+    def overlay(self, image, mask, alpha=0.5):
+        image = image / np.max(image)
+        mask = mask / np.max(mask)
+        image = img_as_float32(image)
+        mask = img_as_float32(mask)
+        image = np.stack([image, image, image], axis=-1)
+        mask = np.stack([mask, np.zeros_like(mask), np.zeros_like(mask)], axis=-1)
+        return (image + mask * alpha)
 
 
     def predict_tiles(self, model, image, tile_shape, overlap):
