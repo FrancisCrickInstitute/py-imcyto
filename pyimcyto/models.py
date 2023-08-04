@@ -96,7 +96,7 @@ def nested_unet(pretrained_weights = None,input_size = (256,256,1), loss_functio
     model = Model(inputs = inputs, outputs = conv_sig)
 
     # model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
-    model.compile(optimizer = Adam(lr = 1e-4), loss = loss_function, metrics = ['accuracy'])
+    model.compile(optimizer = Adam(learning_rate = 1e-4), loss = loss_function, metrics = ['accuracy'])
     #model.summary()
 
     if(pretrained_weights):

@@ -78,8 +78,6 @@ def probability_basin_watershed_2(nuc_im, boundary_im, com_im, thresh_nuc, thres
 
 def instance_closing(seg_mask, strel = None, min_size=5):
 
-    print('segmaskdtype: ', seg_mask.dtype)
-    print('maxgray = ', np.amax(seg_mask), 'unique: ', len(np.unique(seg_mask)))
     if (seg_mask.dtype == 'uint16'):
         seg_mask = cp.asarray(seg_mask, dtype='uint16')
     else:
@@ -93,21 +91,17 @@ def instance_closing(seg_mask, strel = None, min_size=5):
 
     # define new np array to hold predicted instance masks:
     pred_array_size = (seg_mask.shape[0], seg_mask.shape[1], len(predict_labels))
-    print(pred_array_size)
 
     # define empty image:
     empty = cp.zeros([seg_mask.shape[0], seg_mask.shape[1]])
-    print('empty shape initial: ', empty.shape)
 
     # pad predict labels and empty to rpevent negative padding for instnaces:
     image_pad = 10
 
     # pad empty image and 16bit mask so closing on edges with padded instance works:
     empty = cp.pad(empty, (image_pad, image_pad), 'constant', constant_values=0)
-    print('empty shape pad: ', empty.shape)
 
     seg_mask = cp.pad(seg_mask, (image_pad, image_pad), mode='constant', constant_values=0)
-    print('seg_mask shape pad: ', seg_mask.shape)
 
     if len(predict_labels>0):
 
@@ -146,7 +140,6 @@ def instance_closing(seg_mask, strel = None, min_size=5):
 
             # perform closing:
             instance_closed = closing(pad_instance, strel)
-
             instance_closed = remove_small_objects(instance_closed, min_size=min_size, connectivity=1)
             instance_closed = remove_small_holes(instance_closed, area_threshold=min_size, connectivity=1)
 
@@ -182,7 +175,7 @@ def instance_closing(seg_mask, strel = None, min_size=5):
     label_im = label_im[image_pad:-image_pad, image_pad:-image_pad]
     label_im = cp.asnumpy(label_im)
 
-    print('maxgray = ', np.amax(label_im), 'unique: ', len(np.unique(label_im)))
+    # remove small objects:
     if ((np.amax(label_im) <= 65536) or (len(np.unique(label_im)) <= 65536)):
         label_im = label_im.astype('uint16')
         label_im = remove_small_objects(label_im, min_size=min_size)
