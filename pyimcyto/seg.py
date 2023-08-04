@@ -12,15 +12,18 @@ from skimage.measure import regionprops_table
 from skimage.morphology import diamond
 from skimage.segmentation import expand_labels, find_boundaries, relabel_sequential
 from skimage.util import img_as_float32, img_as_uint, map_array
-from util import stitch_with_overlap, tilegen
+from util import stitch_with_overlap, tilegen, trainGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+
+from losses import make_loss
 
 
 class deepimcyto:
-    def __init__(self, weightsdir):
+    def __init__(self, weights_path):
         """The deepimcyto segmentation class.
 
         Args:
-            weightsdir (str): Path to the directory containing the model weights.
+            weights_path (str): Path to the directory containing the model weights.
         """
 
         
@@ -35,11 +38,11 @@ class deepimcyto:
         self.WATERSHED_LINE = False
         self.COMPACTNESS = 0
         self.gpus = len(tf.config.list_physical_devices('GPU'))
-        self.nuc_weights = os.path.join(weightsdir, 'nucleus_edge_weighted.hdf5')
-        self.com_weights = os.path.join(weightsdir, 'com.hdf5')
-        self.AE_weights = os.path.join(weightsdir, 'AE_weights.hdf5')
-        self.boundary_weights = os.path.join(weightsdir, 'boundaries.hdf5')
-        self.scaler_path = os.path.join(weightsdir, 'nuclear_morph_scaler.pkl')
+        self.nuc_weights = os.path.join(weights_path, 'nucleus_edge_weighted.hdf5')
+        self.com_weights = os.path.join(weights_path, 'com.hdf5')
+        self.AE_weights = os.path.join(weights_path, 'AE_weights.hdf5')
+        self.boundary_weights = os.path.join(weights_path, 'boundaries.hdf5')
+        self.scaler_path = os.path.join(weights_path, 'nuclear_morph_scaler.pkl')
         self.morph_scaler = load(open(self.scaler_path, 'rb'))
         self.input_shape = (512, 512, 1)
         self.nuc_model = self.create_model(self.nuc_weights, self.input_shape, self.gpus)
@@ -56,6 +59,20 @@ class deepimcyto:
         self.prediction_coms = []
         self.error_images = []
         self.dilation_radius = 5
+        self.aug_dict = dict(rotation_range=0.2, # default augmentation parameters for training
+                        width_shift_range=0.05,
+                        height_shift_range=0.05,
+                        shear_range=0.05,
+                        zoom_range=0.05,
+                        horizontal_flip=True,
+                        fill_mode='nearest')
+        self.train_batch_size = 4
+        self.custom_model_name = 'model'
+        self.checkpoint_dir = './checkpoints'
+        self.checkpoint_path = os.path.join(self.checkpoint_dir, f'{self.custom_model_name}_checkpoint.hdf5')
+        self.train_steps_per_epoch = 200
+        self.train_epochs=200, 
+        self.val_steps_per_epoch = None
 
         # features for autoencoder:
         self.features = ['area',
@@ -146,6 +163,24 @@ class deepimcyto:
 
         return label
     
+    def train_custom(self, train_path, img_dir, mask_dir, val_path, initial_weights):
+
+        self.loss = make_loss('bce_dice')
+        
+        custom_model = self.create_model(initial_weights, self.input_shape, self.gpus)
+
+        train_gen = trainGenerator(self.train_batch_size, train_path, img_dir, mask_dir, self.aug_dict)
+        val_gen = trainGenerator(self.train_batch_size, val_path, img_dir, mask_dir, self.aug_dict)
+        model_checkpoint = ModelCheckpoint(self.checkpoint_path, monitor='val_loss',verbose=1, save_best_only=True)
+        custom_model.fit_generator(train_gen,
+                            steps_per_epoch=self.train_steps_per_epoch,
+                            epochs=self.train_epochs,
+                            callbacks=[model_checkpoint], 
+                            validation_data=val_gen, 
+                            validation_steps = self.val_steps_per_epoch)
+        
+        return self.custom_model
+    
     def get_boundaries(self):
         """Get boundaries from prediction masks."""
         self.prediction_boundaries = [find_boundaries(x, mode='outer') for x in self.prediction_masks]
@@ -183,14 +218,14 @@ class deepimcyto:
         stitched = stitch_with_overlap(results, image.shape, tile_shape = tile_shape, overlap = overlap)
         return stitched
     
-    def create_model(self, weightsdir, tile_shape, gpus):
+    def create_model(self, weights_path, tile_shape, gpus):
         """Create a U-net++ model with given weights and input shape."""
         if gpus:
             with tf.device('/GPU:0'):
-                model = nested_unet(pretrained_weights = weightsdir, input_size = tile_shape)
+                model = nested_unet(pretrained_weights = weights_path, input_size = tile_shape)
         else:
             with tf.device('/CPU:0'):
-                model = nested_unet(pretrained_weights = weightsdir, input_size = tile_shape)
+                model = nested_unet(pretrained_weights = weights_path, input_size = tile_shape)
         return model
     
     def anomaly_detect(self, mask, model, model_features, region_properties, scaler, batch_size=256):
@@ -314,6 +349,10 @@ class deepimcyto:
             reordered_label_img = img_as_float32(reordered_label_img)
             
         return reordered_label_img
-
-
     
+
+
+
+
+
+
