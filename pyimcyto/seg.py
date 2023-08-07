@@ -6,16 +6,16 @@ import numpy as np
 import pandas as pd
 import skimage.io as io
 import tensorflow as tf
-from models import error_model, nested_unet
-from postprocessing import instance_closing, probability_basin_watershed_2
+from pyimcyto.losses import make_loss
+from pyimcyto.models import error_model, nested_unet
+from pyimcyto.postprocessing import instance_closing, probability_basin_watershed_2
+from pyimcyto.util import stitch_with_overlap, tilegen, trainGenerator
 from skimage.measure import regionprops_table
 from skimage.morphology import diamond
 from skimage.segmentation import expand_labels, find_boundaries, relabel_sequential
 from skimage.util import img_as_float32, img_as_uint, map_array
-from util import stitch_with_overlap, tilegen, trainGenerator
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
-from losses import make_loss
 
 
 class deepimcyto:
