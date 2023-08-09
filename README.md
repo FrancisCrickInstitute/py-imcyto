@@ -5,7 +5,19 @@ pyimcyto is a python library for nuclear and cellular segmentation in imaging ma
 
 The segmentation model uses a U-net++ archiecture with autoencoder-based anomaly detection to refine predictions, and is the same as the **deep-imcyto** segmentation model which is distributed as part of [TRACERx-PHLEX](https://github.com/FrancisCrickInstitute/TRACERx-PHLEX) -- a Nextflow-based multiplexed image analysis pipeline, however the implementation is designed for those who wish to use the model itself directly in their own python code.
 
+# Running in Google colab
+
+The easiest way to get started with pyimcyto is to use the **py-imcyto** Google Colab notebook. Click below to run in Google Colab and learn to segment nuclei and cells in IMC images with py-imcyto. 
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FrancisCrickInstitute/py-imcyto/blob/main/notebooks/pyimcyto_google_colab.ipynb)
+
+- Simply follow the steps below to do basic prediction with the trained deep-imcyto model. 
+- Use a GPU runtime in Google Colab to facilitate faster prediction.
+___
+
 # Getting started
+
+Alternatively, perform the following steps to install py-imcyto in your own Python environment.
 
 1. Download the trained deep-imcyto model weights from our [Zenodo repository](https://doi.org/10.5281/zenodo.7573269)
 
