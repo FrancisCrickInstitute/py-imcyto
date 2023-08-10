@@ -104,6 +104,7 @@ def nested_unet(pretrained_weights = None,input_size = (256,256,1), loss_functio
 
     return model
 
+
 def simple_autoencoder(input_features, pretrained_weights = None, learning_rate=1e-4):
     
     drop = 0.1
